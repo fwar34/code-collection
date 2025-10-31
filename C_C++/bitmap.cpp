@@ -2,6 +2,9 @@
 #include <cstdint>
 #include <optional>
 #include <vector>
+#include <cstring>
+#include <functional>
+#include <format>
 
 #define SUBSCRIBER_MAX_NUM 64
 #define TOPIC_BITMAP_SIZE 64
@@ -23,12 +26,13 @@ enum Topic
     // ...
 };
 
-using NotifyCallback = void(void *arg);
+using TopicNotify = void(*)(const void *);
+
 // pub-sub 使用位图
 struct SubscriberInfo {
     uint32_t id;
-    void *arg;
-    NotifyCallback notify;
+    const void *arg;
+    TopicNotify notify;
 };
 
 struct SubScriberTable
@@ -55,13 +59,12 @@ public:
     void Publish(uint32_t topic);
 
 private:
-    std::optional<uint32_t> SubscriberRegister(const SubscriberInfo &info);
-    void UnSubScriberRegister(uint32_t topic);
+    std::optional<uint32_t> GetSubScriberInfoIndex(const SubscriberInfo &info);
+    void UnSubScriberRegister(uint32_t topic, const SubscriberInfo &info);
     bool IsTopicHasRegister(uint32_t topic);
-    void GetBit(uint32_t topic, uint32_t subscriberInfoIndex);
+    uint32_t GetBit(uint32_t topic, uint32_t subscriberInfoIndex);
     void SetBit(uint32_t topic, uint32_t subscriberInfoIndex);
     void ClrBit(uint32_t topic, uint32_t subscriberInfoIndex);
-    void CollectSubscriberInfoIndex(std::vector &subScriberInfoIndexVec);
     SubscriberInfo *GetSubScriberInfo(uint32_t index);
 
 private:
@@ -71,6 +74,9 @@ private:
 
 bool PubSubManager::Init(uint8_t *buffer, size_t bufferLen)
 {
+    if (buffer == nullptr) {
+        return false;
+    }
     memset(buffer, 0, bufferLen);
     subScriberTable_ = (SubScriberTable *)buffer;
     subScriberTable_->capacity = SUBSCRIBER_MAX_NUM;
@@ -78,11 +84,13 @@ bool PubSubManager::Init(uint8_t *buffer, size_t bufferLen)
     bitTable_ = (BitTable *)(buffer + sizeof(SubScriberTable) + sizeof(SubscriberInfo) * SUBSCRIBER_MAX_NUM);
     bitTable_->capacity = (bufferLen - sizeof(SubScriberTable) - 
         sizeof(SubscriberInfo) * SUBSCRIBER_MAX_NUM - sizeof(BitTable)) / (TOPIC_BITMAP_SIZE >> POWER_SIZE);
+
+    return true;
 }
 
 bool PubSubManager::Subscribe(uint32_t topic, const SubscriberInfo &info)
 {
-    std::optional<uint32_t> index = SubscriberRegister(info);
+    std::optional<uint32_t> index = GetSubScriberInfoIndex(info);
     if (!index.has_value()) {
         return false;
     }
@@ -90,7 +98,7 @@ bool PubSubManager::Subscribe(uint32_t topic, const SubscriberInfo &info)
     uint32_t bitmapBeginIndex = topic << POWER_SIZE;
     uint32_t bitmapIndex = index.value() >> 5;
     uint8_t bitmapOffset = 1 << index.value();
-    subScriberTable_->infos[bitmapBeginIndex + bitmapIndex] |= bitmapOffset;
+    bitTable_->bitmaps[bitmapBeginIndex + bitmapIndex] |= bitmapOffset;
     return true;
 }
 
@@ -110,6 +118,11 @@ void PubSubManager::UnSubscribe(uint32_t topic, const SubscriberInfo &info)
 
 }
 
+/**
+ * @brief 汉明重量算法计算订阅者的索引
+ * 
+ * @param topic 
+ */
 void PubSubManager::Publish(uint32_t topic)
 {
     uint32_t bitmapBeginIndex = topic << POWER_SIZE;
@@ -123,7 +136,7 @@ void PubSubManager::Publish(uint32_t topic)
             tmpIndex = (tmpIndex * 0x01010101) >> 24;
             tmpIndex += i * 32;
 
-            if (SubscriberInfo *info = GetSubScriberInfo(tmpIndex), info != nullptr) {
+            if (SubscriberInfo *info = GetSubScriberInfo(tmpIndex); info != nullptr) {
                 if (info->notify != nullptr) {
                     info->notify(info->arg);
                 }
@@ -134,7 +147,7 @@ void PubSubManager::Publish(uint32_t topic)
     }
 }
 
-std::optional<uint32_t> PubSubManager::SubscriberRegister(const SubscriberInfo &info)
+std::optional<uint32_t> PubSubManager::GetSubScriberInfoIndex(const SubscriberInfo &info)
 {
     uint32_t i = 0;
     for (i = 0; i < subScriberTable_->curSize; i++) {
@@ -142,7 +155,7 @@ std::optional<uint32_t> PubSubManager::SubscriberRegister(const SubscriberInfo &
             continue;
         }
 
-        if (subScriberTable_->infos[i].notify != info.notify) {
+        if ((subScriberTable_->infos[i]).notify != info.notify) {
             continue;
         }
 
@@ -158,8 +171,14 @@ std::optional<uint32_t> PubSubManager::SubscriberRegister(const SubscriberInfo &
     return std::nullopt;
 }
 
-void PubSubManager::UnSubScriberRegister(uint32_t topic)
+void PubSubManager::UnSubScriberRegister(uint32_t topic, const SubscriberInfo &info)
 {
+    std::optional<uint32_t> index = GetSubScriberInfoIndex(info);
+    if (!index.has_value()) {
+        return;
+    }
+
+    ClrBit(topic, index.value());
 }
 
 bool PubSubManager::IsTopicHasRegister(uint32_t topic)
@@ -179,13 +198,13 @@ uint32_t PubSubManager::GetBit(uint32_t topic, uint32_t subscriberInfoIndex)
     uint32_t bitmapBeginIndex = topic << POWER_SIZE;
     uint32_t bitmapIndex = subscriberInfoIndex >> 5;
     uint32_t bitmapOffset = subscriberInfoIndex & 31;
-    return bitTable_->infos[bitmapBeginIndex + bitmapIndex] & bitmapOffset;
+    return bitTable_->bitmaps[bitmapBeginIndex + bitmapIndex] & (1 << bitmapOffset);
 }
 
 void PubSubManager::SetBit(uint32_t topic, uint32_t subscriberInfoIndex)
 {
     uint32_t bitmapBeginIndex = topic << POWER_SIZE; // 计算topic起始索引，POWER_SIZE=1为topic*2即一个topic占用2个uint32_t（64bit）
-    uint32_t bitmapIndex = index.value() >> 5; // index.value()/32，计算从bitmapBeginIndex开始第几个uint32_t偏移
+    uint32_t bitmapIndex = subscriberInfoIndex >> 5; // index.value()/32，计算从bitmapBeginIndex开始第几个uint32_t偏移
     /**
      * 当取模运算的除数是 2 的整数次幂 时，可以通过位运算的 与（&）操作 来优化，
      * 因为此时取模结果等价于该数二进制表示的低 n 位（n 为 2 的幂次的指数）。
@@ -196,7 +215,7 @@ void PubSubManager::SetBit(uint32_t topic, uint32_t subscriberInfoIndex)
      * 因此，45 % 32 可优化为位运算：int a = 45 & 31;
      */
     uint8_t bitmapOffset = subscriberInfoIndex & 31; // x % n => x & (n - 1)，计算半字(32bit)内bit偏移
-    bitTable_->infos[bitmapBeginIndex + bitmapIndex] |= (1 << bitmapOffset);
+    bitTable_->bitmaps[bitmapBeginIndex + bitmapIndex] |= (1 << bitmapOffset);
 }
 
 void PubSubManager::ClrBit(uint32_t topic, uint32_t subscriberInfoIndex)
@@ -207,21 +226,35 @@ void PubSubManager::ClrBit(uint32_t topic, uint32_t subscriberInfoIndex)
     bitTable_->bitmaps[bitmapBeginIndex + bitmapIndex] &= ~(1 << bitmapOffset);
 }
 
-void PubSubManager::CollectSubscriberInfoIndex(std::vector &subScriberInfoIndexVec)
-{
-    
-}
-
 SubscriberInfo *PubSubManager::GetSubScriberInfo(uint32_t index)
 {
     if (index >= SUBSCRIBER_MAX_NUM) {
         return nullptr;
     }
 
-    return &subScriberTable_[index];
+    return &subScriberTable_->infos[index];
 }
 
 int main()
 {
+    constexpr size_t BUFFER_LEN = 1024;
+    uint8_t buffer[BUFFER_LEN] = {0};
+    PubSubManager pbManager;
+    pbManager.Init(buffer, sizeof(buffer));
+    auto topicNotify1 = [](const void *arg) {
+        std::cout << std::format("receive pub {}\n", static_cast<int>(TOPIC_POWER_ON));
+    };
+    SubscriberInfo info1 = {TOPIC_POWER_ON, "info1", topicNotify1};
+    pbManager.Subscribe(TOPIC_POWER_ON, info1);
 
+    auto topicNotify2 = [](const void *arg) {
+        std::cout << std::format("receive pub {}\n", static_cast<int>(TOPIC_POWER_OFF));
+    };
+    SubscriberInfo info2 = {TOPIC_POWER_OFF, "info2", topicNotify2};
+    pbManager.Subscribe(TOPIC_POWER_ON, info2);
+
+    pbManager.Publish(TOPIC_POWER_OFF);
+    pbManager.Publish(TOPIC_POWER_ON);
+
+    return 0;
 }
