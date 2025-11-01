@@ -8,7 +8,7 @@
             "name": "(gdb) Launch bitmap.exe",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/C_C++/build/bitmap.exe",
+            "program": "${workspaceFolder}/build/C_C++/bitmap.exe",
             "args": [],
             "stopAtEntry": true,
             "cwd": "${fileDirname}",

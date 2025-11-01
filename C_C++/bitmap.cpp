@@ -6,7 +6,7 @@
 #include <functional>
 #include <format>
 
-#define SUBSCRIBER_MAX_NUM 64
+#define SUBSCRIBER_MAX_NUM 60 
 #define TOPIC_BITMAP_SIZE 64
 #define POWER_SIZE 1
 
@@ -24,6 +24,14 @@ enum Topic
     TOPIC_SCREEN_ON,
     TOPIC_SCREEN_OFF,
     // ...
+};
+
+static const char *topicStr[] = {
+    "TOPIC_REMOTE",
+    "TOPIC_POWER_ON",
+    "TOPIC_POWER_OFF",
+    "TOPIC_SCREEN_ON",
+    "TOPIC_SCREEN_OFF"
 };
 
 using TopicNotify = void(*)(const void *);
@@ -44,10 +52,10 @@ struct SubScriberTable
 
 struct BitTable
 {
-uint16_t xxxxx: 13;
-uint16_t yyyyy: 3;
-uint32_t capacity;
-uint32_t bitmaps[0];
+    uint16_t xxxxx : 13;
+    uint16_t yyyyy : 3;
+    uint32_t capacity;
+    uint32_t bitmaps[0];
 };
 
 class PubSubManager
@@ -83,7 +91,7 @@ bool PubSubManager::Init(uint8_t *buffer, size_t bufferLen)
     subScriberTable_->curSize = 0;
     bitTable_ = (BitTable *)(buffer + sizeof(SubScriberTable) + sizeof(SubscriberInfo) * SUBSCRIBER_MAX_NUM);
     bitTable_->capacity = (bufferLen - sizeof(SubScriberTable) - 
-        sizeof(SubscriberInfo) * SUBSCRIBER_MAX_NUM - sizeof(BitTable)) / (TOPIC_BITMAP_SIZE >> POWER_SIZE);
+        sizeof(SubscriberInfo) * SUBSCRIBER_MAX_NUM - sizeof(BitTable)) / 4;
 
     return true;
 }
@@ -237,21 +245,21 @@ SubscriberInfo *PubSubManager::GetSubScriberInfo(uint32_t index)
 
 int main()
 {
-    constexpr size_t BUFFER_LEN = 1024;
+    constexpr size_t BUFFER_LEN = 4096;
     uint8_t buffer[BUFFER_LEN] = {0};
     PubSubManager pbManager;
     pbManager.Init(buffer, sizeof(buffer));
     auto topicNotify1 = [](const void *arg) {
-        std::cout << std::format("receive pub {}\n", static_cast<int>(TOPIC_POWER_ON));
+        std::cout << std::format("receive pub {}\n", topicStr[TOPIC_POWER_ON]);
     };
     SubscriberInfo info1 = {TOPIC_POWER_ON, "info1", topicNotify1};
     pbManager.Subscribe(TOPIC_POWER_ON, info1);
 
     auto topicNotify2 = [](const void *arg) {
-        std::cout << std::format("receive pub {}\n", static_cast<int>(TOPIC_POWER_OFF));
+        std::cout << std::format("receive pub {}\n", topicStr[TOPIC_POWER_OFF]);
     };
     SubscriberInfo info2 = {TOPIC_POWER_OFF, "info2", topicNotify2};
-    pbManager.Subscribe(TOPIC_POWER_ON, info2);
+    pbManager.Subscribe(TOPIC_POWER_OFF, info2);
 
     pbManager.Publish(TOPIC_POWER_OFF);
     pbManager.Publish(TOPIC_POWER_ON);
