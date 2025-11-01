@@ -47,9 +47,14 @@ class Tasks():
             ColorsPrint.red_print(f'cmake config error[{e}]')
     
     # CMake构建任务方法，用于编译项目
-    def cmake_build(self, command, buildpath):
+    def cmake_build(self, build_command, config_command, buildpath):
+        if not os.path.exists(buildpath):
+            try:
+                self.cmake_config(config_command)
+            except Exception as e:
+                raise
         # 调用run_command方法执行构建命令
-        self.run_command(command)
+        self.run_command(build_command)
 
     # CMake删除构建目录任务方法，用于清理构建文件
     def cmake_delete(self, build_path):
@@ -146,12 +151,12 @@ def main():
     # 添加-B/--buildpath参数，用于指定构建目录路径
     cmake_config.add_argument('-B', '--buildpath', 
                               dest='buildpath', 
-                              default='build', 
+                            #    // 指定构建目录，使用环境变量$BUILD_PATHdefault='build', 
                               help='config cmake build directory')
     # 添加-G/--generator参数，用于指定CMake生成器类型
     cmake_config.add_argument('-G', '--generator', 
                               dest='generator', 
-                              default='MinGW Makefiles', 
+                            #   default='MinGW Makefiles', 
                               help='config cmake generator')
 
     # 添加build子命令及其参数
@@ -159,12 +164,12 @@ def main():
     # 添加-B/--buildpath参数，用于指定构建目录路径
     cmake_build.add_argument('-B', '--buildpath', 
                              dest='buildpath', 
-                             default='build', 
+                            #  default='build', 
                              help='cmake build directory')
     # 添加-G/--generator参数（构建时通常不需要，但为了参数一致性保留）
     cmake_build.add_argument('-G', '--generator', 
                              dest='generator', 
-                             default='MinGW Makefiles', 
+                            #  default='MinGW Makefiles', 
                              help='config cmake generator')
 
     # 添加delete子命令及其参数
@@ -172,7 +177,7 @@ def main():
     # 添加-B/--buildpath参数，用于指定要删除的构建目录路径
     cmake_delete.add_argument('-B', '--buildpath', 
                               dest='buildpath', 
-                              default='build', 
+                            #   default='build', 
                               help='cmake build directory')
 
     # 解析命令行参数
@@ -187,9 +192,11 @@ def main():
             tasks.cmake_config(command)
         case 'build':
             # 构造CMake构建命令字符串
-            command = f'{CMAKE_EXE} --build {args.buildpath}'
+            # print("lllllllll:" + os.environ.get('MINGW_GENERATOR') + " " + os.environ.get('BUILD_PATH'))
+            build_command = f'{CMAKE_EXE} --build {args.buildpath}'
+            config_command = f'{CMAKE_EXE} -B{args.buildpath} -G"{args.generator}"'
             # 调用cmake_build方法执行构建
-            tasks.cmake_build(command, args.buildpath)
+            tasks.cmake_build(build_command, config_command, args.buildpath)
         case 'delete':
             # 调用cmake_delete方法删除构建目录
             tasks.cmake_delete(args.buildpath)
