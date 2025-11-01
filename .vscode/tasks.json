@@ -89,6 +89,28 @@
             }
         },
         {
+            "label": "CMake Run", // 任务名称：删除CMake构建
+            "type": "process", // 任务类型：直接进程调用
+            "command": "bash", // 执行命令：bash shell
+            "args": [ // 命令参数列表
+                "-c", // bash的-c选项，用于执行后续的命令字符串
+                "build/C_C++/bitmap.exe" // 调用Python脚本删除构建目录
+            ],
+            "group": { // 任务分组配置
+                "kind": "build", // 分组类型：构建相关
+                "isDefault": true // 设置为默认构建任务
+            },
+            "problemMatcher": [], // 无问题匹配器（删除操作通常不需要）
+            "presentation": { // 任务执行时的显示选项
+                "echo": false, // 不在输出中重复显示执行的命令
+                "reveal": "always", // 总是显示输出面板
+                "focus": false, // 不自动聚焦到输出面板
+                "panel": "shared", // 使用共享输出面板
+                "showReuseMessage": false, // 不显示任务可重用的消息
+                "clear": false // 不清空之前的输出
+            }
+        },
+        {
             "label": "CMake Delete", // 任务名称：删除CMake构建
             "type": "process", // 任务类型：直接进程调用
             "command": "bash", // 执行命令：bash shell
