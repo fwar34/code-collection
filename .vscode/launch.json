@@ -37,7 +37,7 @@
             "program": "${workspaceFolder}/tasks.py",
             "console": "integratedTerminal",
             // "args": ["config", "-Bbuild"],
-            "args": ["build", "-Dbuild"],
+            "args": ["build", "-Bbuild", "-GMinGW Makefiles"],
             // "args": ["smartctl"],
             "cwd": "${workspaceFolder}",
             "env": {},

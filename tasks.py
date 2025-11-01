@@ -5,9 +5,16 @@ import os          # 用于与操作系统交互，如文件路径操作
 import shutil      # 用于高级文件操作，如复制、删除目录树等
 import sys         # 用于访问Python解释器相关的变量和函数
 import threading   # 用于实现多线程并发处理
+import time
 
 # 定义CMake可执行文件名，可在不同系统中修改
 CMAKE_EXE='cmake'
+
+def get_local_time():
+    timestamp = time.time()
+    local_time = time.localtime(timestamp)
+    milliseconds = int((timestamp - int(timestamp)) * 1000)
+    return time.strftime("%Y-%m-%d %H:%M:%S", local_time) + f'.{milliseconds:03d}'
 
 # 定义颜色代码类，用于在终端中输出带颜色的文本
 class ColorsPrint:
@@ -58,25 +65,27 @@ class Tasks():
 
     # CMake删除构建目录任务方法，用于清理构建文件
     def cmake_delete(self, build_path):
+        local_time = get_local_time()
         # 检查指定的构建路径是否存在
         if os.path.exists(build_path):
             try:
                 # 递归删除整个构建目录及其内容
                 shutil.rmtree(build_path)
                 # 显示删除成功的绿色信息
-                ColorsPrint.green_print(f'delete directory [{build_path}] success')
+                ColorsPrint.green_print(f'{local_time}: delete directory [{build_path}] success')
             except Exception as e:
                 # 捕获删除过程中的异常并显示错误信息
-                ColorsPrint.red_print(f'delete directory [{build_path}] error[{e}]')
+                ColorsPrint.red_print(f'{local_time}: delete directory [{build_path}] error[{e}]')
         else:
             # 如果目录不存在，显示提示信息
-            ColorsPrint.green_print(f'directory [{build_path}] is empty, do not need delete')
+            ColorsPrint.green_print(f'{local_time}: directory [{build_path}] is empty, do not need delete')
         ColorsPrint.purple_print('-------------------------------------------------')
 
     # 运行命令并返回结果的基础方法
     def run_command(self, command):
+        local_time = get_local_time()
         # 以紫色显示即将执行的命令
-        ColorsPrint.purple_print(f"[{command}]")
+        ColorsPrint.purple_print(f"{local_time}: [{command}]")
         try:
             # 使用subprocess.run执行命令，shell=True允许执行shell命令
             # 在不指定 stdout 和 stderr 参数时，子进程的输出会直接传递到父进程的标准输出和标准错误流
