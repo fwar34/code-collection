@@ -1,0 +1,115 @@
+{
+    "version": "2.0.0", // VS Code tasks.json 文件格式版本
+    "options": { // 全局选项配置
+        "env": { // 环境变量定义
+            "MINGW_GENERATOR": "MinGW Makefiles", // CMake生成器类型：MinGW Makefiles
+            "NINJA_GENERATOR": "Ninja", // CMake生成器类型：Ninja
+            "BUILD_PATH": "build" // 构建输出路径
+        }
+    },
+    "tasks": [ // 任务列表定义
+        {
+            "label": "CMake Configure", // 任务名称：CMake配置
+            "type": "process", // 任务类型：直接进程调用
+            "command": "bash", // 执行命令：bash shell
+            "args": [ // 命令参数列表
+                "-c", // bash的-c选项，用于执行后续的命令字符串
+                "python tasks.py config", // 调用Python脚本进行CMake配置
+                "-B${BUILD_PATH} -G ${MINGW_GENERATOR}" // 这里注意两个环境变量引用只能独立放到一行，
+                                                        // 不能和上面的一行放一起，否则获取不到环境变量的值，原因还不清楚
+            ],
+            "group": { // 任务分组配置
+                "kind": "build", // 分组类型：构建相关
+                "isDefault": true // 设置为默认构建任务
+            },
+            "presentation": { // 任务执行时的显示选项
+                "echo": false, // 不在输出中重复显示执行的命令
+                "reveal": "always", // 总是显示输出面板
+                "focus": false, // 不自动聚焦到输出面板
+                "panel": "shared", // 使用共享输出面板
+                "showReuseMessage": false, // 不显示任务可重用的消息
+                "clear": false // 不清空之前的输出
+            }
+        },
+        {
+            "label": "CMake Build", // 任务名称：CMake构建
+            "type": "process", // 任务类型：直接进程调用
+            "command": "bash", // 执行命令：bash shell
+            "args": [ // 命令参数列表
+                "-c", // bash的-c选项，用于执行后续的命令字符串
+                "python tasks.py build", // 调用Python脚本进行构建
+                "-D$BUILD_PATH" // 指定构建目录，使用环境变量$BUILD_PATH
+            ],
+            "group": { // 任务分组配置
+                "kind": "build", // 分组类型：构建相关
+                "isDefault": true // 设置为默认构建任务
+            },
+            "problemMatcher": [ // 问题匹配器，用于解析编译错误和警告
+                {
+                    "owner": "custom", // 匹配器所有者
+                    "fileLocation": [ // 文件位置解析方式
+                        "autoDetect", // 自动检测文件位置
+                        "${workspaceFolder}" // 工作空间根目录作为基准路径
+                    ],
+                    "pattern": [ // 匹配模式定义
+                        {
+                            "regexp": "^(.*):(\\d+):(\\d+):\\s+(error:.*)", // 正则表达式匹配GCC风格错误
+                            "file": 1, // 文件名匹配组
+                            "line": 2, // 行号匹配组
+                            "column": 3, // 列号匹配组
+                            "message": 4 // 错误消息匹配组
+                        }
+                    ],
+                    "severity": "error" // 问题严重程度：错误
+                },
+                {
+                    "owner": "custom", // 匹配器所有者
+                    "fileLocation": [ // 文件位置解析方式
+                        "autoDetect", // 自动检测文件位置
+                        "${workspaceFolder}" // 工作空间根目录作为基准路径
+                    ],
+                    "pattern": [ // 匹配模式定义
+                        {
+                            "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning:.*)", // 正则表达式匹配GCC风格警告
+                            "file": 1, // 文件名匹配组
+                            "line": 2, // 行号匹配组
+                            "column": 3, // 列号匹配组
+                            "message": 4 // 警告消息匹配组
+                        }
+                    ],
+                    "severity": "warning" // 问题严重程度：警告
+                }
+            ],
+            "presentation": { // 任务执行时的显示选项
+                "echo": false, // 不在输出中重复显示执行的命令
+                "reveal": "always", // 总是显示输出面板
+                "focus": false, // 不自动聚焦到输出面板
+                "panel": "shared", // 使用共享输出面板
+                "showReuseMessage": false, // 不显示任务可重用的消息
+                "clear": false // 不清空之前的输出
+            }
+        },
+        {
+            "label": "CMake Delete", // 任务名称：删除CMake构建
+            "type": "process", // 任务类型：直接进程调用
+            "command": "bash", // 执行命令：bash shell
+            "args": [ // 命令参数列表
+                "-c", // bash的-c选项，用于执行后续的命令字符串
+                "python tasks.py delete -B${BUILD_PATH}" // 调用Python脚本删除构建目录
+            ],
+            "group": { // 任务分组配置
+                "kind": "build", // 分组类型：构建相关
+                "isDefault": true // 设置为默认构建任务
+            },
+            "problemMatcher": [], // 无问题匹配器（删除操作通常不需要）
+            "presentation": { // 任务执行时的显示选项
+                "echo": false, // 不在输出中重复显示执行的命令
+                "reveal": "always", // 总是显示输出面板
+                "focus": false, // 不自动聚焦到输出面板
+                "panel": "shared", // 使用共享输出面板
+                "showReuseMessage": false, // 不显示任务可重用的消息
+                "clear": false // 不清空之前的输出
+            }
+        }
+    ]
+}

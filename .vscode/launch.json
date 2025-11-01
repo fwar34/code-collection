@@ -28,7 +28,21 @@
                     "ignoreFailures": true
                 }
             ]
+        },
+        {
+            "name": "Debug tasks.py",
+            "type": "debugpy",
+            "request": "launch",
+            // "program": "${file}",
+            "program": "${workspaceFolder}/tasks.py",
+            "console": "integratedTerminal",
+            // "args": ["config", "-Bbuild"],
+            "args": ["build", "-Dbuild"],
+            // "args": ["smartctl"],
+            "cwd": "${workspaceFolder}",
+            "env": {},
+            "stopOnEntry": true,
+            "showReturnValue": true
         }
-
     ]
 }
