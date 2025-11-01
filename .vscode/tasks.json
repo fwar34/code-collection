@@ -94,7 +94,7 @@
             "command": "bash", // 执行命令：bash shell
             "args": [ // 命令参数列表
                 "-c", // bash的-c选项，用于执行后续的命令字符串
-                "build/C_C++/bitmap.exe" // 调用Python脚本删除构建目录
+                "build/C_C++/bitmap.exe"
             ],
             "group": { // 任务分组配置
                 "kind": "build", // 分组类型：构建相关
