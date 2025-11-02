@@ -4,7 +4,8 @@
         "env": { // 环境变量定义
             "CMAKE_GENERATOR": "MinGW Makefiles", // CMake生成器类型：MinGW Makefiles
             // "CMAKE_GENERATOR": "Ninja", // CMake生成器类型：Ninja
-            "BUILD_PATH": "build" // 构建输出路径
+            "BUILD_PATH": "build", // 构建输出路径
+            // "BUILD_TYPE": "Debug"
         }
     },
     "tasks": [ // 任务列表定义
