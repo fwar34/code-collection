@@ -23,6 +23,8 @@ enum Topic
     TOPIC_POWER_OFF,
     TOPIC_SCREEN_ON,
     TOPIC_SCREEN_OFF,
+    TOPIC_22 = 22,
+    TOPIC_23 = 23,
     // ...
 };
 
@@ -138,9 +140,9 @@ void PubSubManager::Publish(uint32_t topic)
         uint32_t bitmap = bitTable_->bitmaps[bitmapBeginIndex + i];
         while (bitmap != 0) {
             uint32_t tmpIndex = (bitmap - 1) & ~bitmap;
-            tmpIndex = tmpIndex & 0x55555555 + (tmpIndex >> 1) & 0x55555555;
-            tmpIndex = tmpIndex & 0x33333333 + (tmpIndex >> 2) & 0x33333333;
-            tmpIndex = tmpIndex & 0x0F0F0F0F + (tmpIndex >> 4) & 0x0F0F0F0F;
+            tmpIndex = (tmpIndex & 0x55555555) + ((tmpIndex >> 1) & 0x55555555);
+            tmpIndex = (tmpIndex & 0x33333333) + ((tmpIndex >> 2) & 0x33333333);
+            tmpIndex = (tmpIndex & 0x0F0F0F0F) + ((tmpIndex >> 4) & 0x0F0F0F0F);
             tmpIndex = (tmpIndex * 0x01010101) >> 24;
             tmpIndex += i * 32;
 
@@ -249,20 +251,38 @@ int main()
     uint8_t buffer[BUFFER_LEN] = {0};
     PubSubManager pbManager;
     pbManager.Init(buffer, sizeof(buffer));
+
+    constexpr uint32_t id1 = 1;
+    constexpr uint32_t id2 = 2;
+    constexpr uint32_t id22 = 22;
+    constexpr uint32_t id23 = 23;
+
+    auto topicNotify22 = [](const void *arg) {
+        std::cout << std::format("receive pub {}\n", (uint32_t)TOPIC_22);
+    };
+    SubscriberInfo info22 = {id22, "info22", topicNotify22};
+    pbManager.Subscribe(TOPIC_22, info22);
+
+    auto topicNotify23 = [](const void *arg) {
+        std::cout << std::format("receive pub {}\n", (uint32_t)TOPIC_23);
+    };
+    SubscriberInfo info23 = {id23, "info23", topicNotify23};
+    pbManager.Subscribe(TOPIC_23, info23);
+
     auto topicNotify1 = [](const void *arg) {
         std::cout << std::format("receive pub {}\n", topicStr[TOPIC_POWER_ON]);
     };
-    SubscriberInfo info1 = {TOPIC_POWER_ON, "info1", topicNotify1};
+    SubscriberInfo info1 = {id1, "info1", topicNotify1};
     pbManager.Subscribe(TOPIC_POWER_ON, info1);
 
     auto topicNotify2 = [](const void *arg) {
         std::cout << std::format("receive pub {}\n", topicStr[TOPIC_POWER_OFF]);
     };
-    SubscriberInfo info2 = {TOPIC_POWER_OFF, "info2", topicNotify2};
+    SubscriberInfo info2 = {id2, "info2", topicNotify2};
     pbManager.Subscribe(TOPIC_POWER_OFF, info2);
 
-    pbManager.Publish(TOPIC_POWER_OFF);
     pbManager.Publish(TOPIC_POWER_ON);
+    pbManager.Publish(TOPIC_POWER_OFF);
 
     return 0;
 }
